@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+db.sqlite3
+.env
+
+# Next.js
+fly-car/node_modules/
+fly-car/.next/
+fly-car/out/
+fly-car/build/
+fly-car/.env.local
+.DS_Store
