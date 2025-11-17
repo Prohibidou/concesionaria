@@ -115,17 +115,20 @@ class CotizacionSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['fecha_hora_generada', 'importe_final', 'valida', 'fecha_hora_vencimiento']
 
+class ItemCotizacionSerializer(serializers.Serializer):
+    vehiculo_id = serializers.UUIDField()
+    accesorios = serializers.ListField(child=serializers.UUIDField(), required=False)
 
 class SimularCotizacionSerializer(serializers.Serializer):
     vehiculos = serializers.ListField(
-        child=serializers.DictField(child=serializers.CharField()),
+        child=ItemCotizacionSerializer(),
         min_length=1,
         max_length=2
     )
 
 class GenerarCotizacionSerializer(serializers.Serializer):
     vehiculos = serializers.ListField(
-        child=serializers.DictField(child=serializers.CharField()),
+        child=ItemCotizacionSerializer(),
         min_length=1,
         max_length=2
     )
