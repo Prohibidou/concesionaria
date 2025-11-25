@@ -27,9 +27,9 @@ export default function Home() {
     const fetchVehiculos = async () => {
       try {
         const response = await api.get('/vehiculos/?estado=DISPONIBLE');
-        
-        // if (response.data.results) {
-          // setVehiculos(response.data.results);
+        // Manejar respuesta paginada (Django REST Framework)
+        if (response.data.results) {
+          setVehiculos(response.data.results);
         } else if (Array.isArray(response.data)) {
           setVehiculos(response.data);
         } else {
