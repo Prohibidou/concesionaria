@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Button from '@/components/ui/Button';
-import { FileText, Calendar, XCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { FileText, Calendar, XCircle, ExternalLink, Loader2, CheckCircle } from 'lucide-react';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -21,7 +21,7 @@ export default function DashboardPage() {
         }
         setUserType(type);
 
-        if (type === 'CLIENTE') {
+        if (type === 'CLIENTE' || type === 'VENDEDOR') {
             fetchData();
         } else {
             setLoading(false);
@@ -56,6 +56,19 @@ export default function DashboardPage() {
         }
     };
 
+    const handleConcretarVenta = async (cotizacionId: string) => {
+        if (!confirm('¿Confirmar que se ha recibido el pago total y concretar la venta?')) return;
+
+        try {
+            await api.post('/ventas/realizar/', { cotizacion_id: cotizacionId });
+            alert('¡Venta concretada exitosamente!');
+            fetchData(); // Recargar datos
+        } catch (error) {
+            console.error('Error al concretar venta:', error);
+            alert('Error al procesar la venta. Verifique que la reserva esté activa.');
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -68,23 +81,74 @@ export default function DashboardPage() {
     if (userType !== 'CLIENTE') {
         return (
             <div className="min-h-screen bg-gray-50 p-6">
-                <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-6">Panel de Gestión</h1>
-
-                    <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 text-center">
-                        <div className="mb-6">
-                            <h2 className="text-xl font-semibold mb-2">Administración del Sistema</h2>
-                            <p className="text-gray-500">
-                                Para gestionar vehículos, ventas y reportes, accede al panel administrativo de Django.
-                            </p>
-                        </div>
-
+                <div className="max-w-6xl mx-auto">
+                    <div className="flex justify-between items-center mb-8">
+                        <h1 className="text-3xl font-bold text-gray-900">Panel de Ventas</h1>
                         <a href="http://localhost:8000/admin" target="_blank" rel="noopener noreferrer">
-                            <Button className="gap-2">
+                            <Button variant="outline" className="gap-2">
                                 <ExternalLink className="w-4 h-4" />
-                                Ir al Panel Administrativo
+                                Admin Django
                             </Button>
                         </a>
+                    </div>
+
+                    <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+                        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                            <Calendar className="w-5 h-5 text-blue-600" />
+                            Gestión de Reservas Activas
+                        </h2>
+
+                        {reservas.length === 0 ? (
+                            <p className="text-gray-500 text-center py-8">No hay reservas activas para gestionar.</p>
+                        ) : (
+                            <div className="grid gap-4">
+                                {reservas.map((reserva) => (
+                                    <div key={reserva.id} className="border border-gray-100 rounded-xl p-6 hover:shadow-md transition-shadow bg-gray-50">
+                                        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                                            <div>
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <span className="font-mono font-bold text-lg">{reserva.nro_reserva}</span>
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${reserva.estado === 'ACTIVA' ? 'bg-green-100 text-green-700' :
+                                                            reserva.estado === 'COMPLETADA' ? 'bg-blue-100 text-blue-700' :
+                                                                'bg-gray-100 text-gray-700'
+                                                        }`}>
+                                                        {reserva.estado}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-gray-600">
+                                                    <strong>Cliente:</strong> {reserva.cotizacion_detalle?.cliente_nombre || 'Cliente'}
+                                                </p>
+                                                <p className="text-sm text-gray-600">
+                                                    <strong>Vence:</strong> {new Date(reserva.fecha_hora_vencimiento).toLocaleDateString()}
+                                                </p>
+                                                <p className="text-sm text-gray-600">
+                                                    <strong>Seña:</strong> ${Number(reserva.importe).toLocaleString('es-AR')}
+                                                </p>
+                                            </div>
+
+                                            {reserva.estado === 'ACTIVA' && (
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        onClick={() => handleConcretarVenta(reserva.cotizacion)}
+                                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                                    >
+                                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                                        Concretar Venta
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => handleCancelarReserva(reserva.id)}
+                                                        className="text-red-600 border-red-200 hover:bg-red-50"
+                                                    >
+                                                        Cancelar
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -122,7 +186,8 @@ export default function DashboardPage() {
                                             <span className="font-mono font-bold text-gray-900">{reserva.nro_reserva}</span>
                                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${reserva.estado === 'ACTIVA' ? 'bg-green-100 text-green-700' :
                                                     reserva.estado === 'CANCELADA' ? 'bg-red-100 text-red-700' :
-                                                        'bg-gray-100 text-gray-700'
+                                                        reserva.estado === 'COMPLETADA' ? 'bg-blue-100 text-blue-700' :
+                                                            'bg-gray-100 text-gray-700'
                                                 }`}>
                                                 {reserva.estado}
                                             </span>

@@ -134,8 +134,13 @@ class CotizacionViewSet(viewsets.ModelViewSet):
         # Determinar cliente
         if user.tipo_usuario == 'CLIENTE':
             cliente = user.cliente
-            # Invalidar cotización anterior vigente
-            Cotizacion.objects.filter(cliente=cliente, valida=True).update(valida=False)
+            # Invalidar cotización anterior vigente, EXCEPTO si tiene reserva activa
+            Cotizacion.objects.filter(
+                cliente=cliente, 
+                valida=True
+            ).exclude(
+                reserva__estado='ACTIVA'
+            ).update(valida=False)
         elif user.tipo_usuario == 'VENDEDOR':
             cliente_id = data.get('cliente_id')
             cliente = get_object_or_404(Cliente, id=cliente_id)
@@ -191,13 +196,15 @@ class CotizacionViewSet(viewsets.ModelViewSet):
 class ReservaViewSet(viewsets.ModelViewSet):
     serializer_class = ReservaSerializer
     permission_classes = [permissions.IsAuthenticated]
+    ordering_fields = ['fecha_hora_generada']
+    ordering = ['-fecha_hora_generada']
     
     def get_queryset(self):
         user = self.request.user
         if user.tipo_usuario == 'CLIENTE':
-            return Reserva.objects.filter(cotizacion__cliente__usuario=user)
+            return Reserva.objects.filter(cotizacion__cliente__usuario=user).order_by('-fecha_hora_generada')
         elif user.tipo_usuario == 'VENDEDOR':
-            return Reserva.objects.all()
+            return Reserva.objects.all().order_by('-fecha_hora_generada')
         return Reserva.objects.none()
 
     @action(detail=False, methods=['post'])
